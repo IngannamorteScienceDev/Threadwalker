@@ -72,3 +72,5 @@ ipython_config.py
 *.npz
 *.parquet
 *.pkl
+
+data/processed/roles_used.json

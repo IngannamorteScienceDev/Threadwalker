@@ -7,26 +7,35 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
-# Пути
+# Пути проекта
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPTS_DIR = os.path.join(BASE_DIR, "scripts")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
-SCRIPT_PATH = os.path.join(BASE_DIR, "scripts", "parse_messages.py")
-
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Лог
-log_path = os.path.join(LOG_DIR, f"main_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
+# Путь к лог-файлу с меткой времени
+log_path = os.path.join(LOG_DIR, f"pipeline_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
 log_file = open(log_path, "w", encoding="utf-8")
 
+
 def log(message):
+    """
+    Логирует сообщение одновременно в консоль и лог-файл.
+    ANSI-цвета удаляются из текста при записи в файл.
+    """
     timestamp = datetime.now().strftime("[%H:%M:%S]")
     console_msg = f"{timestamp} {message}"
-    plain_msg = console_msg.replace(Fore.YELLOW, "").replace(Fore.GREEN, "").replace(Fore.RED, "").replace(Fore.CYAN, "").replace(Fore.MAGENTA, "").replace(Style.BRIGHT, "").replace(Style.RESET_ALL, "")
+    plain_msg = console_msg
+    for color in [Fore.YELLOW, Fore.GREEN, Fore.RED, Fore.CYAN, Fore.MAGENTA, Style.BRIGHT, Style.RESET_ALL]:
+        plain_msg = plain_msg.replace(color, "")
     print(console_msg)
     log_file.write(plain_msg + "\n")
 
-# Проверка .gitkeep
+
 def ensure_gitkeep():
+    """
+    Добавляет .gitkeep в пустые папки и удаляет, если они заполняются.
+    """
     for p in Path(BASE_DIR).rglob("*"):
         if p.is_dir() and ".git" not in str(p):
             contents = list(p.iterdir())
@@ -36,29 +45,44 @@ def ensure_gitkeep():
             elif gitkeep.exists() and len(contents) > 1:
                 gitkeep.unlink()
 
-ensure_gitkeep()
 
-# Запуск парсера
-log(Fore.CYAN + Style.BRIGHT + f"=== Запуск парсера VK HTML ===\n")
-log(Fore.YELLOW + f"Запуск: {SCRIPT_PATH}")
+def run_script(script_name):
+    """
+    Запускает скрипт из папки scripts, логирует вывод с кодировкой UTF-8.
+    """
+    script_path = os.path.join(SCRIPTS_DIR, script_name)
+    log(Fore.CYAN + Style.BRIGHT + f"\n=== Запуск {script_name} ===")
 
-process = subprocess.Popen(
-    [sys.executable, SCRIPT_PATH],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.STDOUT,
-    universal_newlines=True,
-    bufsize=1
-)
+    process = subprocess.Popen(
+        [sys.executable, script_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+        encoding="utf-8",  # 👈 критично для работы на Windows и при запуске через кнопку
+        bufsize=1
+    )
 
-for line in process.stdout:
-    print(line, end="")
-    log_file.write(line)
+    for line in process.stdout:
+        print(line, end="")
+        log_file.write(line)
 
-process.wait()
+    process.wait()
+    if process.returncode == 0:
+        log(Fore.GREEN + f"✅ Скрипт {script_name} завершён успешно")
+    else:
+        log(Fore.RED + f"❌ Ошибка при выполнении {script_name}")
 
-if process.returncode == 0:
-    log(Fore.GREEN + f"✅ Завершено успешно")
-else:
-    log(Fore.RED + f"❌ Ошибка при выполнении скрипта")
 
-log_file.close()
+def main():
+    log(Style.BRIGHT + Fore.YELLOW + "Threadwalker: запуск полного пайплайна")
+    ensure_gitkeep()
+
+    run_script("parse_messages.py")
+    run_script("add_author_role.py")
+    run_script("split_by_author.py")
+
+    log(Fore.MAGENTA + Style.BRIGHT + "\n🎉 Пайплайн завершён")
+
+
+if __name__ == "__main__":
+    main()
