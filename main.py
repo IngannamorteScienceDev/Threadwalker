@@ -13,7 +13,7 @@ SCRIPTS_DIR = os.path.join(BASE_DIR, "scripts")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Путь к лог-файлу
+# Лог-файл
 log_path = os.path.join(LOG_DIR, f"pipeline_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
 log_file = open(log_path, "w", encoding="utf-8")
 
@@ -21,7 +21,6 @@ log_file = open(log_path, "w", encoding="utf-8")
 def log(message):
     """
     Логирует сообщение в консоль и лог-файл.
-    Цвета удаляются из текста при записи в лог.
     """
     timestamp = datetime.now().strftime("[%H:%M:%S]")
     console_msg = f"{timestamp} {message}"
@@ -34,7 +33,7 @@ def log(message):
 
 def ensure_gitkeep():
     """
-    Добавляет .gitkeep в пустые папки и удаляет его, если папка не пуста.
+    Добавляет .gitkeep в пустые папки и удаляет их, если они больше не нужны.
     """
     for p in Path(BASE_DIR).rglob("*"):
         if p.is_dir() and ".git" not in str(p):
@@ -48,7 +47,7 @@ def ensure_gitkeep():
 
 def run_script(script_name):
     """
-    Запускает указанный скрипт из папки scripts, логирует вывод.
+    Запускает скрипт по имени, логирует результат.
     """
     script_path = os.path.join(SCRIPTS_DIR, script_name)
     log(Fore.CYAN + Style.BRIGHT + f"\n=== Запуск {script_name} ===")
@@ -58,8 +57,8 @@ def run_script(script_name):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
-        encoding="utf-8",  # Универсально
-        errors="replace",  # Не падаем, если что-то не декодируется
+        encoding="utf-8",
+        errors="replace",
         bufsize=1
     )
 
@@ -75,16 +74,22 @@ def run_script(script_name):
 
 
 def main():
-    # Автоматически переключаем Windows-консоль в UTF-8
     if sys.platform == "win32":
-        os.system("chcp 65001 >nul")
+        os.system("chcp 65001 >nul")  # Переключаем PowerShell в UTF-8
 
     log(Style.BRIGHT + Fore.YELLOW + "Threadwalker: запуск полного пайплайна")
     ensure_gitkeep()
 
+    # Этапы
     run_script("parse_messages.py")
     run_script("add_author_role.py")
     run_script("split_by_author.py")
+
+    # Лемматизация
+    run_script("lemmatize_author_a.py")
+    run_script("lemmatize_author_b.py")
+    run_script("lemmatize_author_a_advanced.py")
+    run_script("lemmatize_author_b_advanced.py")
 
     log(Fore.MAGENTA + Style.BRIGHT + "\n🎉 Пайплайн завершён")
 
