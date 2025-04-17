@@ -6,7 +6,12 @@ A modular pipeline for semantic and emotional analysis of VK message archives. F
 
 **Threadwalker** is an open-source tool for parsing and analyzing message threads exported from VKontakte (VK) in HTML format.
 
-This project is under active development. The current version focuses on **parsing raw VK HTML exports into a clean, unified CSV format**.
+This project is under active development. The current version focuses on:
+
+- Parsing raw VK HTML exports
+- Assigning author roles
+- Splitting data for individual analysis
+- Preparing the data for further semantic and emotional processing
 
 ---
 
@@ -30,33 +35,58 @@ Each `<dialog_id>` should represent a different user or group chat.
 
 ## 📤 Output
 
-Parsed results will be saved as a CSV file:
+After running the pipeline, you will get:
 
-```
-data/processed/messages.csv
-```
-
-With the following fields:
-- `dialog_id`: folder name representing the conversation
-- `sender`: name of the message author
-- `datetime`: message timestamp (ISO 8601)
-- `text`: message body (or `[attachment]` if missing)
+- `data/processed/messages.csv` — raw parsed messages
+- `data/processed/messages_with_roles.csv` — messages with assigned roles
+- `data/processed/author_a.csv` — messages by author A
+- `data/processed/author_b.csv` — messages by author B
+- `data/processed/roles_used.json` — real name mapping to `author_a` / `author_b`
 
 ---
 
-## 🚀 Usage
+## 🚀 Running the Full Pipeline
 
-To parse all HTML files:
+Just run:
 
 ```bash
-python scripts/parse_messages.py
+python main.py
 ```
 
-Make sure all dependencies are installed.
+This will:
+
+1. Parse all HTML messages
+2. Automatically detect the two most frequent senders
+3. Assign roles: `author_a`, `author_b`
+4. Split messages into separate CSVs
+5. Save logs to the `logs/` directory
 
 ---
 
-## 📦 Requirements
+## ⚙️ Custom Role Assignment (Optional)
+
+You can override automatic detection:
+
+### 1. Using CLI arguments:
+
+```bash
+python scripts/add_author_role.py --author_a "Name A" --author_b "Name B"
+```
+
+### 2. Or via a `config.json` file in the root:
+
+```json
+{
+  "author_a": "Name A",
+  "author_b": "Name B"
+}
+```
+
+A sample template is included: `config.example.json`
+
+---
+
+## 📦 Installation
 
 Install dependencies via:
 
@@ -64,11 +94,13 @@ Install dependencies via:
 pip install -r requirements.txt
 ```
 
-Main packages:
+Required packages:
+
 - `beautifulsoup4`
 - `pandas`
 - `tqdm`
 - `chardet`
+- `colorama`
 
 ---
 
@@ -77,31 +109,38 @@ Main packages:
 ```
 Threadwalker/
 ├── data/
-│   ├── raw/           # Raw VK HTML exports (nested by dialog_id)
-│   └── processed/     # Output CSV
+│   ├── raw/               # Raw VK HTML exports (nested by dialog_id)
+│   └── processed/         # Output CSVs and role metadata
 ├── scripts/
-│   └── parse_messages.py
+│   ├── parse_messages.py
+│   ├── add_author_role.py
+│   └── split_by_author.py
+├── logs/                  # Execution logs
+│   └── .gitkeep
+├── main.py                # Full processing pipeline
+├── config.example.json    # Optional config template for role assignment
 ├── requirements.txt
-├── .gitignore
 └── README.md
 ```
 
 ---
 
 ## 🧪 Example Output (CSV)
+
 ```csv
-dialog_id,sender,datetime,text
-123456,John Doe,2023-05-01T13:47:22,Hey! Long time no see.
-123456,Me,2023-05-01T13:48:00,Hi! Yeah, how have you been?
+dialog_id,sender,datetime,text,author_role
+123456,Person A,2023-05-01T13:47:22,Hey!,author_a
+123456,Person B,2023-05-01T13:48:00,Hi!,author_b
 ```
 
 ---
 
 ## 📌 Notes
 
-- Russian datetime strings like `19 фев 2022 в 03:42:03` are normalized to ISO format.
-- Attachments are marked as `[attachment]` in the `text` field.
-- This parser supports **multi-user** and **multi-folder** exports out of the box.
+- Russian datetime strings like `19 фев 2022 в 03:42:03` are normalized to ISO 8601.
+- Messages without text (e.g., images, voice messages) are marked as `[attachment]`.
+- Parser supports **multi-user**, **multi-folder** exports out of the box.
+- All outputs are UTF-8 encoded.
 
 ---
 
