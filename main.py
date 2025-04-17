@@ -13,15 +13,15 @@ SCRIPTS_DIR = os.path.join(BASE_DIR, "scripts")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Путь к лог-файлу с меткой времени
+# Путь к лог-файлу
 log_path = os.path.join(LOG_DIR, f"pipeline_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
 log_file = open(log_path, "w", encoding="utf-8")
 
 
 def log(message):
     """
-    Логирует сообщение одновременно в консоль и лог-файл.
-    ANSI-цвета удаляются из текста при записи в файл.
+    Логирует сообщение в консоль и лог-файл.
+    Цвета удаляются из текста при записи в лог.
     """
     timestamp = datetime.now().strftime("[%H:%M:%S]")
     console_msg = f"{timestamp} {message}"
@@ -34,7 +34,7 @@ def log(message):
 
 def ensure_gitkeep():
     """
-    Добавляет .gitkeep в пустые папки и удаляет, если они заполняются.
+    Добавляет .gitkeep в пустые папки и удаляет его, если папка не пуста.
     """
     for p in Path(BASE_DIR).rglob("*"):
         if p.is_dir() and ".git" not in str(p):
@@ -48,7 +48,7 @@ def ensure_gitkeep():
 
 def run_script(script_name):
     """
-    Запускает скрипт из папки scripts, логирует вывод с кодировкой UTF-8.
+    Запускает указанный скрипт из папки scripts, логирует вывод.
     """
     script_path = os.path.join(SCRIPTS_DIR, script_name)
     log(Fore.CYAN + Style.BRIGHT + f"\n=== Запуск {script_name} ===")
@@ -58,7 +58,8 @@ def run_script(script_name):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
-        encoding="utf-8",  # 👈 критично для работы на Windows и при запуске через кнопку
+        encoding="utf-8",  # Универсально
+        errors="replace",  # Не падаем, если что-то не декодируется
         bufsize=1
     )
 
@@ -74,6 +75,10 @@ def run_script(script_name):
 
 
 def main():
+    # Автоматически переключаем Windows-консоль в UTF-8
+    if sys.platform == "win32":
+        os.system("chcp 65001 >nul")
+
     log(Style.BRIGHT + Fore.YELLOW + "Threadwalker: запуск полного пайплайна")
     ensure_gitkeep()
 
